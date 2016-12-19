@@ -19,6 +19,7 @@ static char DZNWebViewControllerKVOContext = 0;
 @interface DZNWebViewController ()
 
 @property (nonatomic, strong) UIBarButtonItem *backwardBarItem;
+@property (nonatomic, strong) UIBarButtonItem *homeBarItem;
 @property (nonatomic, strong) UIBarButtonItem *forwardBarItem;
 @property (nonatomic, strong) UIBarButtonItem *stateBarItem;
 @property (nonatomic, strong) UIBarButtonItem *actionBarItem;
@@ -157,6 +158,7 @@ static char DZNWebViewControllerKVOContext = 0;
         
         UIProgressView *progressView = [[UIProgressView alloc] initWithFrame:frame];
         progressView.trackTintColor = [UIColor clearColor];
+        progressView.progressTintColor = [UIColor blueColor];
         progressView.alpha = 0.0f;
         
         [self.navigationBar addSubview:progressView];
@@ -175,6 +177,17 @@ static char DZNWebViewControllerKVOContext = 0;
         _backwardBarItem.enabled = NO;
     }
     return _backwardBarItem;
+}
+
+- (UIBarButtonItem *)homeBarItem
+{
+    if (!_homeBarItem)
+    {
+        _homeBarItem = [[UIBarButtonItem alloc] initWithImage:[self homeButtonImage] landscapeImagePhone:nil style:0 target:self action:@selector(goHome:)];
+        _homeBarItem.accessibilityLabel = NSLocalizedStringFromTable(@"Backward", @"DZNWebViewController", @"Accessibility label button title");
+        _homeBarItem.enabled = NO;
+    }
+    return _homeBarItem;
 }
 
 - (UIBarButtonItem *)forwardBarItem
@@ -215,7 +228,7 @@ static char DZNWebViewControllerKVOContext = 0;
     NSMutableArray *items = [NSMutableArray new];
     
     UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
-    
+
     if ((self.supportedWebNavigationTools & DZNWebNavigationToolBackward) > 0 || self.supportsAllNavigationTools) {
         [items addObject:self.backwardBarItem];
     }
@@ -238,6 +251,47 @@ static char DZNWebViewControllerKVOContext = 0;
     return items;
 }
 
+- (NSArray *)navigationToolItemsLeft
+{
+    NSMutableArray *items = [NSMutableArray new];
+    
+    UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
+    
+    if ((self.supportedWebNavigationTools & DZNWebNavigationToolStopReload) > 0 || self.supportsAllNavigationTools) {
+        if (!DZN_IS_IPAD) [items addObject:flexibleSpace];
+        [items addObject:self.stateBarItem];
+    }
+    
+    if ((self.supportedWebNavigationTools & DZNWebNavigationToolForward) > 0 || self.supportsAllNavigationTools) {
+        if (!DZN_IS_IPAD) [items addObject:flexibleSpace];
+        [items addObject:self.forwardBarItem];
+    }
+    
+    if ((self.supportedWebNavigationTools & DZNWebNavigationToolBackward) > 0 || self.supportsAllNavigationTools) {
+        [items addObject:self.backwardBarItem];
+    }
+    
+    if ((self.supportedWebNavigationTools & DZNWebNavigationToolHome) > 0 || self.supportsAllNavigationTools) {
+        [items addObject:self.homeBarItem];
+    }
+    
+    return items;
+}
+
+- (NSArray *)navigationToolItemsRight
+{
+    NSMutableArray *items = [NSMutableArray new];
+    
+    UIBarButtonItem *flexibleSpace = [[UIBarButtonItem alloc] initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace target:nil action:NULL];
+    
+    if (self.supportedWebActions > 0) {
+        if (!DZN_IS_IPAD) [items addObject:flexibleSpace];
+        [items addObject:self.actionBarItem];
+    }
+    
+    return items;
+}
+
 - (BOOL)supportsAllNavigationTools
 {
     return (_supportedWebNavigationTools == DZNWebNavigationToolAll) ? YES : NO;
@@ -249,6 +303,14 @@ static char DZNWebViewControllerKVOContext = 0;
         _backwardButtonImage = [UIImage imageNamed:@"dzn_icn_toolbar_backward" inBundle:[NSBundle bundleForClass:[DZNWebViewController class]] compatibleWithTraitCollection:nil];
     }
     return _backwardButtonImage;
+}
+
+- (UIImage *)homeButtonImage
+{
+    if (!_homeButtonImage) {
+        _homeButtonImage = [UIImage imageNamed:@"dzn_icn_toolbar_home" inBundle:[NSBundle bundleForClass:[DZNWebViewController class]] compatibleWithTraitCollection:nil];
+    }
+    return _homeButtonImage;
 }
 
 - (UIImage *)forwardButtonImage
@@ -394,15 +456,16 @@ static char DZNWebViewControllerKVOContext = 0;
     }
     
     if (url.length > 0 && self.showNavigationPromptURL) {
-        [text appendFormat:@"%@", url];
+        [text appendFormat:@"%@", [url stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
     }
     
     NSDictionary *attributes = @{NSFontAttributeName: titleFont, NSForegroundColorAttributeName: textColor};
     NSMutableAttributedString *attributedString = [[NSMutableAttributedString alloc] initWithString:text attributes:attributes];
-    NSRange urlRange = [text rangeOfString:url];
+    NSRange urlRange = [text rangeOfString:[url stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
 
     if (urlRange.location != NSNotFound && self.showNavigationPromptTitle) {
         [attributedString addAttribute:NSFontAttributeName value:urlFont range:urlRange];
+        [attributedString addAttribute:NSForegroundColorAttributeName value:[UIColor grayColor] range:urlRange];
     }
     
     label.attributedText = attributedString;
@@ -443,7 +506,6 @@ static char DZNWebViewControllerKVOContext = 0;
     return NO;
 }
 
-
 #pragma mark - DZNWebViewController methods
 
 - (void)loadURL:(NSURL *)URL
@@ -464,6 +526,11 @@ static char DZNWebViewControllerKVOContext = 0;
         NSURLRequest *request = [[NSURLRequest alloc] initWithURL:URL];
         [self.webView loadRequest:request];
     }
+}
+
+- (void)goHome:(id)sender
+{
+    [self didPressHomeBarButtonItem:sender];
 }
 
 - (void)goBackward:(id)sender
@@ -533,7 +600,8 @@ static char DZNWebViewControllerKVOContext = 0;
 - (void)configureToolBars
 {
     if (DZN_IS_IPAD) {
-        self.navigationItem.rightBarButtonItems = [[[self navigationToolItems] reverseObjectEnumerator] allObjects];
+        self.navigationItem.leftBarButtonItems = [[[self navigationToolItemsLeft] reverseObjectEnumerator] allObjects];
+        self.navigationItem.rightBarButtonItems = [[[self navigationToolItemsRight] reverseObjectEnumerator] allObjects];
     }
     else {
         [self setToolbarItems:[self navigationToolItems]];
@@ -541,6 +609,9 @@ static char DZNWebViewControllerKVOContext = 0;
     
     self.toolbar = self.navigationController.toolbar;
     self.navigationBar = self.navigationController.navigationBar;
+    if (self.navigationBarTintColor) {
+        self.navigationBar.tintColor = self.navigationBarTintColor;
+    }
     self.navigationBarSuperView = self.navigationBar.superview;
     
     self.navigationController.hidesBarsOnSwipe = self.hideBarsWithGestures;
@@ -598,6 +669,7 @@ static char DZNWebViewControllerKVOContext = 0;
     self.stateBarItem.landscapeImagePhone = nil;
     self.stateBarItem.accessibilityLabel = NSLocalizedStringFromTable(self.webView.isLoading ? @"Stop" : @"Reload", @"DZNWebViewController", @"Accessibility label button title");
     self.stateBarItem.enabled = YES;
+    self.homeBarItem.enabled = ![self.webView.URL.absoluteString isEqualToString:self.URL.absoluteString];
 }
 
 - (void)presentActivityController:(id)sender
@@ -843,6 +915,11 @@ static char DZNWebViewControllerKVOContext = 0;
     }
 }
 
+#pragma mark - Actions
+
+- (void)didPressHomeBarButtonItem:(UIBarButtonItem *)item {
+    // override if needed
+}
 
 #pragma mark - View Auto-Rotation
 

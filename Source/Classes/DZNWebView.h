@@ -22,5 +22,7 @@
 @protocol DZNNavigationDelegate <WKNavigationDelegate>
 
 - (void)webView:(DZNWebView *)webView didUpdateProgress:(CGFloat)progress;
+- (void)webViewDidPressHomeIcon:(DZNWebView *)webView;
+
 
 @end

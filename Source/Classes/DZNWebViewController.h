@@ -22,6 +22,7 @@ typedef NS_OPTIONS(NSUInteger, DZNWebNavigationTools) {
     DZNWebNavigationToolBackward = (1 << 0),
     DZNWebNavigationToolForward = (1 << 1),
     DZNWebNavigationToolStopReload = (1 << 2),
+    DZNWebNavigationToolHome = (1 << 3),
 };
 
 /**
@@ -48,6 +49,8 @@ typedef NS_OPTIONS(NSUInteger, DZNWebNavigationPrompt) {
     DZNWebNavigationPromptURL = (1 << 1),
     DZNWebNavigationPromptAll = DZNWebNavigationPromptTitle | DZNWebNavigationPromptURL,
 };
+
+@class DNZWebViewController;
 
 /**
  A very simple web browser with useful navigation and tooling features.
@@ -122,7 +125,8 @@ typedef NS_OPTIONS(NSUInteger, DZNWebNavigationPrompt) {
 @property (nonatomic, strong) UIImage *reloadButtonImage;
 // The action button displayed on the navigation bar (requieres at least 1 DZNsupportedWebActions value)
 @property (nonatomic, strong) UIImage *actionButtonImage;
-
+// The home button displayed on the tool bar (requieres DZNWebNavigationToolHome)
+@property (nonatomic, strong) UIImage *homeButtonImage;
 
 ///------------------------------------------------
 /// @name Delegate Methods Requiring Super
@@ -147,4 +151,16 @@ typedef NS_OPTIONS(NSUInteger, DZNWebNavigationPrompt) {
 // UITableViewDelegate
 - (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath NS_REQUIRES_SUPER;
 
+// Override if needed
+- (NSArray *)navigationToolItemsRight;
+- (NSArray *)navigationToolItemsLeft;
+
+- (void)didPressHomeBarButtonItem:(UIBarButtonItem *)item;
+
+/// ------------------------------------------------
+/// Customization
+/// ------------------------------------------------
+@property (nonatomic, strong) UIColor *navigationBarTintColor;
+
 @end
+
